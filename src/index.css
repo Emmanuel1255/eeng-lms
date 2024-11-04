@@ -1,0 +1,83 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: 'Inter var', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-gray-50 dark:bg-dark-background text-gray-900 dark:text-dark-text-primary;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-dark-primary rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-dark-secondary rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-dark-border;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
+  }
+
+  .btn-accent {
+    @apply bg-accent-600 text-white hover:bg-accent-700 focus:ring-accent-500;
+  }
+
+  .input-base {
+    @apply block w-full rounded-md shadow-sm focus:ring-2 focus:ring-offset-2 dark:bg-dark-paper dark:border-dark-border;
+  }
+
+  .input-primary {
+    @apply border-gray-300 focus:border-primary-500 focus:ring-primary-500 dark:text-dark-text-primary;
+  }
+
+  .card {
+    @apply bg-white dark:bg-dark-paper rounded-lg shadow-md p-6;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-1;
+  }
+
+  .form-error {
+    @apply mt-1 text-sm text-error-600 dark:text-error-400;
+  }
+
+  .link {
+    @apply text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors duration-200;
+  }
+}
+
+/* Animation classes */
+.fade-in {
+  @apply animate-fade-in;
+}
+
+.slide-in {
+  @apply animate-slide-in;
+}
