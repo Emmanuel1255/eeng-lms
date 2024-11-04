@@ -232,4 +232,79 @@ export const logout = () => {
   window.location.href = '/login';
 };
 
+export const attendanceService = {
+  // Create attendance session
+  createAttendance: async (data) => {
+    try {
+      const response = await api.post('/attendance', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Get module attendance
+  getModuleAttendance: async (moduleId) => {
+    try {
+      const response = await api.get(`/attendance/module/${moduleId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Update student attendance
+  updateAttendance: async (attendanceId, studentId, data) => {
+    try {
+      const response = await api.patch(
+        `/attendance/${attendanceId}/student/${studentId}`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Get attendance statistics
+  getAttendanceStats: async (moduleId) => {
+    try {
+      const response = await api.get(`/attendance/stats/module/${moduleId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Get student's attendance
+  getStudentAttendance: async (moduleId) => {
+    try {
+      const response = await api.get(`/attendance/student/module/${moduleId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Generate QR code for attendance
+  generateQRCode: async (attendanceId) => {
+    try {
+      const response = await api.get(`/attendance/${attendanceId}/qr`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  // Mark attendance using QR code
+  markAttendanceQR: async (qrData) => {
+    try {
+      const response = await api.post('/attendance/qr-mark', qrData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
+};
+
 export default api;

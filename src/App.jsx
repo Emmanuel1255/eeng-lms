@@ -11,6 +11,7 @@ import AddModule from './pages/lecturer/modules/AddModule';
 import EditModule from './pages/lecturer/modules/EditModule';
 import StudentList from './pages/lecturer/students/StudentList';
 import ModuleEnrollment from './pages/lecturer/modules/ModuleEnrollment';
+import AttendanceManagement from './pages/lecturer/attendance/AttendanceManagement';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/lecturer/modules/edit/:id" element={<EditModule />} />
             <Route path="/lecturer/students" element={<StudentList />} />
             <Route path="/lecturer/modules/:id/enrollment" element={<ModuleEnrollment />} />
+            <Route path="/lecturer/modules/:moduleId/attendance" element={<AttendanceManagement />} />
           </Route>
         </Routes>
       </Router>
