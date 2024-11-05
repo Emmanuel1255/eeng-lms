@@ -1,5 +1,5 @@
-// src/pages/lecturer/attendance/AttendanceManagement.jsx
-import { useState, useEffect } from 'react';
+// src/pages/lecturer/attendance/MarkAttendance.jsx
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -9,28 +9,38 @@ import {
     QrCode,
     CheckCircle,
     XCircle,
-    AlertCircle
+    AlertCircle,
+    RefreshCw
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LecturerLayout from '../../../components/layout/LecturerLayout';
-import { attendanceService } from '../../../services/api';
+import { attendanceService, moduleService } from '../../../services/api';
 
-const AttendanceManagement = () => {
+const MarkAttendance = () => {
     const { moduleId } = useParams();
     const [loading, setLoading] = useState(true);
     const [module, setModule] = useState(null);
     const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [showQRCode, setShowQRCode] = useState(false);
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate] = useState(new Date());
     const [qrCodeData, setQRCodeData] = useState(null);
     const [currentSession, setCurrentSession] = useState(null);
     const [generating, setGenerating] = useState(false);
+    const [qrRefreshing, setQrRefreshing] = useState(false);
+    const [todaySession, setTodaySession] = useState(null);
 
-    useEffect(() => {
-        fetchAttendanceData();
+    // Fetch module details
+    const fetchModuleDetails = useCallback(async () => {
+        try {
+            const response = await moduleService.getModuleById(moduleId);
+            setModule(response.data);
+        } catch (error) {
+            console.error('Error fetching module:', error);
+            toast.error('Failed to fetch module details');
+        }
     }, [moduleId]);
 
-    const fetchAttendanceData = async () => {
+    const fetchAttendanceData = useCallback(async () => {
         try {
             const response = await attendanceService.getModuleAttendance(moduleId);
             console.log('Attendance data:', response.data);
@@ -41,10 +51,34 @@ const AttendanceManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [moduleId]);
+
+    useEffect(() => {
+        fetchModuleDetails();
+        fetchAttendanceData();
+    }, [fetchModuleDetails, fetchAttendanceData]);
+
+    const fetchTodaySession = useCallback(async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const sessions = attendanceRecords.filter(record => 
+            record.date.split('T')[0] === today
+        );
+        setTodaySession(sessions[0] || null);
+    }, [attendanceRecords]);
+
+    useEffect(() => {
+        fetchModuleDetails();
+        fetchAttendanceData();
+    }, [fetchModuleDetails, fetchAttendanceData]);
+
+    useEffect(() => {
+        fetchTodaySession();
+    }, [attendanceRecords, fetchTodaySession]);
 
     const formatTimeForAPI = (date) => {
-        return date.toTimeString().split(' ')[0].substr(0, 5);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
     };
 
     const createAttendanceSession = async () => {
@@ -66,46 +100,81 @@ const AttendanceManagement = () => {
             const response = await attendanceService.createAttendance(data);
             console.log('Attendance creation response:', response);
 
-            if (response?.data?._id) {
-                setCurrentSession(response.data);
-                try {
-                    const qrResponse = await generateQRCode(response.data._id);
-                    console.log('QR code response:', qrResponse);
-                    if (qrResponse?.data?.data) {
-                        setQRCodeData(qrResponse.data.data);
-                        setShowQRCode(true);
-                        await fetchAttendanceData();
-                        toast.success('Attendance session started');
-                    } else {
-                        throw new Error('Invalid QR code data');
-                    }
-                } catch (qrError) {
-                    console.error('QR generation error:', qrError);
-                    toast.error('Failed to generate QR code');
-                }
-            } else {
+            const attendanceData = response?.data?.data;
+            
+            if (!attendanceData || !attendanceData._id) {
                 throw new Error('Invalid session creation response');
             }
+
+            setCurrentSession(attendanceData);
+            setTodaySession(attendanceData);
+            await fetchAttendanceData();
+            toast.success('Attendance session created successfully');
         } catch (error) {
             console.error('Create session error:', error);
-            toast.error(error.response?.data?.error || 'Failed to create attendance session');
+            toast.error(error.response?.data?.message || error.message || 'Failed to create attendance session');
         } finally {
             setGenerating(false);
         }
     };
 
-    const generateQRCode = async (attendanceId) => {
+    const handleQRCodeGeneration = async (attendanceId) => {
         try {
-            const response = await attendanceService.generateQRCode(attendanceId);
-            if (response.data?.data) {
-                setQRCodeData(response.data.data);
-                return response;
+            setQrRefreshing(true);
+            console.log('Generating QR code for attendance ID:', attendanceId);
+            
+            const qrResponse = await attendanceService.generateQRCode(attendanceId);
+            console.log('QR code generation response:', qrResponse);
+    
+            if (!qrResponse?.data) {
+                throw new Error('Failed to generate QR code');
             }
-            throw new Error('Invalid QR code data received');
+    
+            // Create QR code data
+            const qrData = JSON.stringify({
+                attendanceId: attendanceId,
+                timestamp: new Date().toISOString(),
+                moduleId: moduleId,
+                type: 'attendance'
+            });
+    
+            console.log('Setting QR code data:', qrData);
+            setQRCodeData(qrData);
+            setShowQRCode(true);
+    
+            // Set up auto-refresh
+            setTimeout(() => {
+                if (currentSession?._id === attendanceId) {
+                    handleQRCodeGeneration(attendanceId);
+                }
+            }, 5 * 60 * 1000);
+    
+            return qrResponse;
         } catch (error) {
-            console.error('Generate QR code error:', error);
-            toast.error('Failed to generate QR code');
+            console.error('QR generation error:', error);
             throw error;
+        } finally {
+            setQrRefreshing(false);
+        }
+    };
+
+    
+    const handleGenerateQR = async () => {
+        if (!todaySession?._id) {
+            toast.error('No active session found for today');
+            return;
+        }
+
+        try {
+            setQrRefreshing(true);
+            const qrResponse = await handleQRCodeGeneration(todaySession._id);
+            console.log('QR Response:', qrResponse);
+            setShowQRCode(true);
+        } catch (error) {
+            console.error('QR generation error:', error);
+            toast.error('Failed to generate QR code');
+        } finally {
+            setQrRefreshing(false);
         }
     };
 
@@ -113,22 +182,12 @@ const AttendanceManagement = () => {
         try {
             await attendanceService.updateAttendance(attendanceId, studentId, { status });
             await fetchAttendanceData();
-            toast.success('Attendance status updated successfully');
+            toast.success(`Attendance marked as ${status}`);
         } catch (error) {
             console.error('Update attendance error:', error);
             toast.error('Failed to update attendance status');
         }
     };
-
-    if (loading) {
-        return (
-            <LecturerLayout>
-                <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                </div>
-            </LecturerLayout>
-        );
-    }
 
     const QRCodeModal = () => {
         if (!showQRCode || !qrCodeData) return null;
@@ -147,14 +206,22 @@ const AttendanceManagement = () => {
                             />
                         </div>
                         <p className="text-sm text-gray-500 mb-4">
-                            QR Code will expire in 5 minutes
+                            QR Code will refresh automatically every 5 minutes
                         </p>
                         <div className="flex space-x-2">
                             <button
-                                onClick={() => currentSession && generateQRCode(currentSession._id)}
-                                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                                onClick={() => currentSession?._id && handleQRCodeGeneration(currentSession._id)}
+                                disabled={qrRefreshing}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             >
-                                Regenerate
+                                {qrRefreshing ? (
+                                    <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <>
+                                        <RefreshCw className="h-4 w-4 mr-2" />
+                                        Refresh QR
+                                    </>
+                                )}
                             </button>
                             <button
                                 onClick={() => setShowQRCode(false)}
@@ -169,6 +236,16 @@ const AttendanceManagement = () => {
         );
     };
 
+    if (loading) {
+        return (
+            <LecturerLayout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                </div>
+            </LecturerLayout>
+        );
+    }
+
     return (
         <LecturerLayout>
             <div className="space-y-6">
@@ -179,33 +256,69 @@ const AttendanceManagement = () => {
                             Attendance Management
                         </h1>
                         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            Manage attendance for your module sessions
+                            {module?.code} - {module?.name}
                         </p>
                     </div>
-                    <button
-                        onClick={createAttendanceSession}
-                        disabled={generating}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {generating ? (
-                            <>
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Generating...
-                            </>
-                        ) : (
-                            <>
-                                <Clock className="h-5 w-5 mr-2" />
-                                Start Session
-                            </>
-                        )}
-                    </button>
+                    <div className="flex space-x-4">
+                        <button
+                            onClick={createAttendanceSession}
+                            disabled={generating || todaySession !== null}
+                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {generating ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Creating...
+                                </>
+                            ) : (
+                                <>
+                                    <Clock className="h-5 w-5 mr-2" />
+                                    Start
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={handleGenerateQR}
+                            disabled={!todaySession || qrRefreshing}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {qrRefreshing ? (
+                                <RefreshCw className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <QrCode className="h-5 w-5 mr-2" />
+                                    Generate QR Code
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 {/* QR Code Modal */}
                 <QRCodeModal />
+
+                {todaySession && (
+                    <div className="bg-white dark:bg-dark-paper shadow rounded-lg p-4">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                    Today's Session
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    Started at: {todaySession.startTime}
+                                </p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Active
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Attendance Records */}
                 <div className="bg-white dark:bg-dark-paper shadow overflow-hidden sm:rounded-lg">
@@ -314,4 +427,4 @@ const AttendanceManagement = () => {
     );
 };
 
-export default AttendanceManagement;
+export default MarkAttendance;

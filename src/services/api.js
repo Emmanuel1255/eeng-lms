@@ -1,4 +1,4 @@
-// client/src/services/api.js
+// src/services/api.js
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
@@ -74,6 +74,89 @@ export const authService = {
   }
 };
 
+// Attendance services
+export const attendanceService = {
+  createAttendance: async (data) => {
+    try {
+        console.log('Creating attendance with data:', data);
+        const response = await api.post('/attendance', data);
+        console.log('Create attendance response:', response);
+        return response;
+    } catch (error) {
+        console.error('API createAttendance error:', error.response?.data || error);
+        throw error;
+    }
+},
+
+  getModuleAttendance: async (moduleId) => {
+    try {
+      const response = await api.get(`/attendance/module/${moduleId}`);
+      return response;
+    } catch (error) {
+      console.error('API getModuleAttendance error:', error.response?.data || error);
+      throw error;
+    }
+  },
+
+  updateAttendance: async (attendanceId, studentId, data) => {
+    try {
+      const response = await api.patch(
+        `/attendance/${attendanceId}/student/${studentId}`,
+        data
+      );
+      return response;
+    } catch (error) {
+      console.error('API updateAttendance error:', error.response?.data || error);
+      throw error;
+    }
+  },
+
+  generateQRCode: async (attendanceId) => {
+    try {
+        console.log('Generating QR code for attendance ID:', attendanceId);
+        const response = await api.get(`/attendance/${attendanceId}/qr`);
+        console.log('Raw QR code response:', response);
+        
+        // If the response doesn't have data.data, create a fallback
+        if (!response.data?.data) {
+            response.data = {
+                data: JSON.stringify({
+                    attendanceId,
+                    timestamp: new Date().toISOString(),
+                    type: 'attendance'
+                })
+            };
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('API generateQRCode error:', error.response?.data || error);
+        throw error;
+    }
+},
+
+  markAttendanceQR: async (qrData) => {
+    try {
+      const response = await api.post('/attendance/qr-mark', qrData);
+      return response;
+    } catch (error) {
+      console.error('API markAttendanceQR error:', error.response?.data || error);
+      throw error;
+    }
+  }
+};
+
+// Error handling helper
+export const handleApiError = (error) => {
+  console.error('API Error:', error);
+  const errorMessage = error.response?.data?.error || 
+                      error.response?.data?.message || 
+                      error.message || 
+                      'An unexpected error occurred';
+  toast.error(errorMessage);
+  return errorMessage;
+};
+
 // Module services
 export const moduleService = {
   // Create module
@@ -134,77 +217,40 @@ export const moduleService = {
     } catch (error) {
       throw error.response?.data || error;
     }
-  },
+  }
+};
 
-  // Student enrollment services
-  addStudent: async (moduleId, studentData) => {
+// Student services
+export const studentService = {
+  // Get all students
+  getAllStudents: async () => {
     try {
-      const response = await api.post(`/modules/${moduleId}/students`, studentData);
+      const response = await api.get('/users/students');
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
     }
   },
 
-  removeStudent: async (moduleId, studentId) => {
+  // Get student details
+  getStudentDetails: async (studentId) => {
     try {
-      const response = await api.delete(`/modules/${moduleId}/students/${studentId}`);
+      const response = await api.get(`/users/students/${studentId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
     }
   },
 
-  // CSV upload for bulk student enrollment
-  uploadStudents: async (moduleId, formData) => {
+  // Get student attendance
+  getStudentAttendance: async (moduleId) => {
     try {
-      const response = await api.post(
-        `/modules/${moduleId}/students/upload`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  // Get enrolled students
-  getEnrolledStudents: async (moduleId) => {
-    try {
-      const response = await api.get(`/modules/${moduleId}/students`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  // Download CSV template
-  getCSVTemplate: async () => {
-    try {
-      const response = await api.get('/modules/students/template', {
-        responseType: 'blob'
-      });
+      const response = await api.get(`/attendance/student/module/${moduleId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
     }
   }
-};
-
-// Error handling helper
-export const handleApiError = (error) => {
-  console.error('API Error:', error);
-  const errorMessage = error.response?.data?.error || 
-                      error.response?.data?.message || 
-                      error.message || 
-                      'An unexpected error occurred';
-  toast.error(errorMessage);
-  return errorMessage;
 };
 
 // Helper functions
@@ -232,79 +278,67 @@ export const logout = () => {
   window.location.href = '/login';
 };
 
-export const attendanceService = {
-  // Create attendance session
-  createAttendance: async (data) => {
+// File upload service
+export const fileService = {
+  uploadFile: async (formData, path) => {
     try {
-      const response = await api.post('/attendance', data);
+      const response = await api.post(`/upload/${path}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
     }
   },
 
-  // Get module attendance
-  getModuleAttendance: async (moduleId) => {
+  getFile: async (fileId) => {
     try {
-      const response = await api.get(`/attendance/module/${moduleId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  // Update student attendance
-  updateAttendance: async (attendanceId, studentId, data) => {
-    try {
-      const response = await api.patch(
-        `/attendance/${attendanceId}/student/${studentId}`,
-        data
-      );
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  // Get attendance statistics
-  getAttendanceStats: async (moduleId) => {
-    try {
-      const response = await api.get(`/attendance/stats/module/${moduleId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  // Get student's attendance
-  getStudentAttendance: async (moduleId) => {
-    try {
-      const response = await api.get(`/attendance/student/module/${moduleId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  // Generate QR code for attendance
-  generateQRCode: async (attendanceId) => {
-    try {
-      const response = await api.get(`/attendance/${attendanceId}/qr`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-
-  // Mark attendance using QR code
-  markAttendanceQR: async (qrData) => {
-    try {
-      const response = await api.post('/attendance/qr-mark', qrData);
+      const response = await api.get(`/files/${fileId}`, {
+        responseType: 'blob'
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
     }
   }
+};
+
+// QR Code service
+export const qrCodeService = {
+  generate: async (data) => {
+    try {
+      const response = await api.post('/qr/generate', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  verify: async (qrData) => {
+    try {
+      const response = await api.post('/qr/verify', qrData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
+};
+
+// WebSocket setup for real-time updates (if needed)
+export const setupWebSocket = (token) => {
+  const ws = new WebSocket(`${process.env.VITE_WS_URL}?token=${token}`);
+  
+  ws.onopen = () => {
+    console.log('WebSocket Connected');
+  };
+  
+  ws.onclose = () => {
+    console.log('WebSocket Disconnected');
+  };
+  
+  return ws;
 };
 
 export default api;
