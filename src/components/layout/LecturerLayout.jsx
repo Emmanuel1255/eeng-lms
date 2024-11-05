@@ -1,9 +1,9 @@
 // src/components/layout/LecturerLayout.jsx
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
+import {
+  LayoutDashboard,
+  BookOpen,
   LogOut,
   Menu,
   Users,
@@ -15,6 +15,7 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
+import { moduleService } from '../../services/moduleService';
 
 const LecturerLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,24 +32,24 @@ const LecturerLayout = ({ children }) => {
 
   const fetchModuleDetails = async () => {
     try {
-      const response = await fetch(`/api/modules/${moduleId}`);
-      const data = await response.json();
-      setCurrentModule(data.data);
+      const response = await moduleService.getLecturerModules();
+      // const data = await response.json();
+      setCurrentModule(response.data);
     } catch (error) {
       console.error('Failed to fetch module details:', error);
     }
   };
 
   const mainNavigation = [
-    { 
-      name: 'Dashboard', 
-      href: '/lecturer/dashboard', 
-      icon: LayoutDashboard 
+    {
+      name: 'Dashboard',
+      href: '/lecturer/dashboard',
+      icon: LayoutDashboard
     },
-    { 
-      name: 'Modules', 
-      href: '/lecturer/modules', 
-      icon: BookOpen 
+    {
+      name: 'Modules',
+      href: '/lecturer/modules',
+      icon: BookOpen
     },
     {
       name: 'Students',
@@ -75,23 +76,8 @@ const LecturerLayout = ({ children }) => {
     },
     {
       name: 'Grades',
-      href: `/lecturer/modules/${moduleId}/grades`,
+      href: `/lecturer/modules/${moduleId}/grades/overview`,
       icon: GraduationCap
-    },
-    {
-      name: 'Assignments',
-      href: `/lecturer/modules/${moduleId}/assignments`,
-      icon: ClipboardCheck
-    },
-    {
-      name: 'Tests',
-      href: `/lecturer/modules/${moduleId}/tests`,
-      icon: PenTool
-    },
-    {
-      name: 'Final Exam',
-      href: `/lecturer/modules/${moduleId}/exams`,
-      icon: FileText
     }
   ] : [];
 
@@ -104,18 +90,16 @@ const LecturerLayout = ({ children }) => {
   const SidebarLink = ({ item }) => (
     <Link
       to={item.href}
-      className={`${
-        location.pathname === item.href
+      className={`${location.pathname === item.href
           ? 'bg-gray-100 text-gray-900'
           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-      } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+        } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
     >
       <item.icon
-        className={`${
-          location.pathname === item.href 
-            ? 'text-gray-500' 
+        className={`${location.pathname === item.href
+            ? 'text-gray-500'
             : 'text-gray-400 group-hover:text-gray-500'
-        } mr-3 h-5 w-5`}
+          } mr-3 h-5 w-5`}
       />
       {item.name}
     </Link>
@@ -138,7 +122,7 @@ const LecturerLayout = ({ children }) => {
             <X className="h-6 w-6 text-white" />
           </button>
         </div>
-        
+
         <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
           <div className="flex-shrink-0 flex items-center px-4">
             <h1 className="text-xl font-semibold text-gray-900">LMS Portal</h1>
@@ -147,7 +131,7 @@ const LecturerLayout = ({ children }) => {
             {mainNavigation.map((item) => (
               <SidebarLink key={item.name} item={item} />
             ))}
-            
+
             {moduleId && (
               <div className="mt-8">
                 <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -160,9 +144,10 @@ const LecturerLayout = ({ children }) => {
                 </div>
               </div>
             )}
+
           </nav>
         </div>
-        
+
         <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
           <button
             onClick={handleLogout}
@@ -177,7 +162,7 @@ const LecturerLayout = ({ children }) => {
           </button>
         </div>
       </div>
-      
+
       <div className="flex-shrink-0 w-14" aria-hidden="true">
         {/* Force sidebar to shrink to fit close icon */}
       </div>
@@ -193,12 +178,12 @@ const LecturerLayout = ({ children }) => {
             <div className="flex flex-shrink-0 items-center px-4">
               <h1 className="text-xl font-semibold text-gray-900">LMS Portal</h1>
             </div>
-            
+
             <nav className="mt-5 flex-1 space-y-1 bg-white px-2">
               {mainNavigation.map((item) => (
                 <SidebarLink key={item.name} item={item} />
               ))}
-              
+
               {moduleId && (
                 <div className="mt-8">
                   <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -213,7 +198,7 @@ const LecturerLayout = ({ children }) => {
               )}
             </nav>
           </div>
-          
+
           <div className="flex flex-shrink-0 border-t border-gray-200 p-4">
             <button
               onClick={handleLogout}
@@ -255,9 +240,9 @@ const LecturerLayout = ({ children }) => {
                   <h2 className="text-lg font-medium text-gray-900">
                     {currentModule.code} - {currentModule.name}
                   </h2>
-                  <p className="mt-1 text-sm text-gray-500">
+                  {/* <p className="mt-1 text-sm text-gray-500">
                     {currentModule.level} • {currentModule.schedule.day} {currentModule.schedule.startTime}-{currentModule.schedule.endTime}
-                  </p>
+                  </p> */}
                 </div>
               )}
               {children}

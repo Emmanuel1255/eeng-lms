@@ -77,26 +77,8 @@ const ModuleList = () => {
     {
       name: 'Grades',
       icon: GraduationCap,
-      href: `/lecturer/modules/${module._id}/grades`,
+      href: `/lecturer/modules/${module._id}/grades/overview`,
       color: 'text-yellow-600'
-    },
-    {
-      name: 'Assignments',
-      icon: ClipboardCheck,
-      href: `/lecturer/modules/${module._id}/assignments`,
-      color: 'text-indigo-600'
-    },
-    {
-      name: 'Tests',
-      icon: PenTool,
-      href: `/lecturer/modules/${module._id}/tests`,
-      color: 'text-pink-600'
-    },
-    {
-      name: 'Final Exam',
-      icon: FileText,
-      href: `/lecturer/modules/${module._id}/exams`,
-      color: 'text-orange-600'
     }
   ];
 
@@ -133,14 +115,14 @@ const ModuleList = () => {
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => navigate(`/lecturer/modules/${module._id}/attendance`)}
+              onClick={() => navigate(`/lecturer/modules/${module._id}/attendance/mark`)}
               className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
             >
               <Calendar className="h-4 w-4 mr-1.5" />
               Take Attendance
             </button>
             <button
-              onClick={() => navigate(`/lecturer/modules/${module._id}/grades`)}
+              onClick={() => navigate(`/lecturer/modules/${module._id}/grades/overview`)}
               className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
             >
               <GraduationCap className="h-4 w-4 mr-1.5" />

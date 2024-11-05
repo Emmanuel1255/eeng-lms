@@ -1,6 +1,6 @@
 // src/pages/lecturer/attendance/MarkAttendance.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
     Calendar,
@@ -14,10 +14,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LecturerLayout from '../../../components/layout/LecturerLayout';
-import { attendanceService, moduleService } from '../../../services/api';
+import {  attendanceService, moduleService } from '../../../services/api';
+import { attendanceServiceStop, formatTimeForAPI } from '../../../services/attendanceService';
 
 const MarkAttendance = () => {
     const { moduleId } = useParams();
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [module, setModule] = useState(null);
     const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -28,6 +30,7 @@ const MarkAttendance = () => {
     const [generating, setGenerating] = useState(false);
     const [qrRefreshing, setQrRefreshing] = useState(false);
     const [todaySession, setTodaySession] = useState(null);
+    const [sessionStatus, setSessionStatus] = useState('pending');
 
     // Fetch module details
     const fetchModuleDetails = useCallback(async () => {
@@ -60,7 +63,7 @@ const MarkAttendance = () => {
 
     const fetchTodaySession = useCallback(async () => {
         const today = new Date().toISOString().split('T')[0];
-        const sessions = attendanceRecords.filter(record => 
+        const sessions = attendanceRecords.filter(record =>
             record.date.split('T')[0] === today
         );
         setTodaySession(sessions[0] || null);
@@ -101,7 +104,7 @@ const MarkAttendance = () => {
             console.log('Attendance creation response:', response);
 
             const attendanceData = response?.data?.data;
-            
+
             if (!attendanceData || !attendanceData._id) {
                 throw new Error('Invalid session creation response');
             }
@@ -118,18 +121,20 @@ const MarkAttendance = () => {
         }
     };
 
+    // console.log("todaySession",todaySession);
+
     const handleQRCodeGeneration = async (attendanceId) => {
         try {
             setQrRefreshing(true);
             console.log('Generating QR code for attendance ID:', attendanceId);
-            
+
             const qrResponse = await attendanceService.generateQRCode(attendanceId);
             console.log('QR code generation response:', qrResponse);
-    
+
             if (!qrResponse?.data) {
                 throw new Error('Failed to generate QR code');
             }
-    
+
             // Create QR code data
             const qrData = JSON.stringify({
                 attendanceId: attendanceId,
@@ -137,18 +142,18 @@ const MarkAttendance = () => {
                 moduleId: moduleId,
                 type: 'attendance'
             });
-    
+
             console.log('Setting QR code data:', qrData);
             setQRCodeData(qrData);
             setShowQRCode(true);
-    
+
             // Set up auto-refresh
             setTimeout(() => {
                 if (currentSession?._id === attendanceId) {
                     handleQRCodeGeneration(attendanceId);
                 }
             }, 5 * 60 * 1000);
-    
+
             return qrResponse;
         } catch (error) {
             console.error('QR generation error:', error);
@@ -158,7 +163,7 @@ const MarkAttendance = () => {
         }
     };
 
-    
+
     const handleGenerateQR = async () => {
         if (!todaySession?._id) {
             toast.error('No active session found for today');
@@ -186,6 +191,36 @@ const MarkAttendance = () => {
         } catch (error) {
             console.error('Update attendance error:', error);
             toast.error('Failed to update attendance status');
+        }
+    };
+
+    const handleStopSession = async () => {
+        try {
+            if (!todaySession?._id) {
+                toast.error('No active session found');
+                return;
+            }
+    
+            console.log('Stopping session:', todaySession._id);
+            
+            const response = await attendanceServiceStop.updateSessionStatus(todaySession._id, 'completed');
+            console.log('Stop session response:', response);
+    
+            if (response.success) {
+                // Update local state
+                const updatedSession = { ...todaySession, status: 'completed' };
+                setTodaySession(updatedSession);
+                
+                // Refresh attendance data
+                await fetchAttendanceData();
+                
+                toast.success('Session stopped successfully');
+            } else {
+                throw new Error('Failed to stop session');
+            }
+        } catch (error) {
+            console.error('Stop session error:', error);
+            toast.error(error.response?.data?.message || 'Failed to stop session');
         }
     };
 
@@ -276,13 +311,22 @@ const MarkAttendance = () => {
                             ) : (
                                 <>
                                     <Clock className="h-5 w-5 mr-2" />
-                                    Start
+                                    Start Session
                                 </>
                             )}
                         </button>
+
+
+                        <button
+                            onClick={() => navigate(`/lecturer/modules/${module._id}/attendance-list`)}
+                            className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+                        >
+                            View Attendance
+                        </button>
+
                         <button
                             onClick={handleGenerateQR}
-                            disabled={!todaySession || qrRefreshing}
+                            disabled={!todaySession || qrRefreshing || todaySession.status === 'completed'}
                             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {qrRefreshing ? (
@@ -300,7 +344,7 @@ const MarkAttendance = () => {
                 {/* QR Code Modal */}
                 <QRCodeModal />
 
-                {todaySession && (
+                {todaySession && todaySession.status !== 'completed' && (
                     <div className="bg-white dark:bg-dark-paper shadow rounded-lg p-4">
                         <div className="flex justify-between items-center">
                             <div>
@@ -311,10 +355,22 @@ const MarkAttendance = () => {
                                     Started at: {todaySession.startTime}
                                 </p>
                             </div>
-                            <div className="flex items-center space-x-2">
-                                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Active
+                            <div className="flex items-center space-x-4">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${todaySession.status === 'completed'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-green-100 text-green-800'
+                                    }`}>
+                                    {todaySession.status === 'completed' ? 'Completed' : 'Active'}
                                 </span>
+                                {todaySession.status !== 'completed' && (
+                                    <button
+                                        onClick={handleStopSession}
+                                        className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                                    >
+                                        <Clock className="h-4 w-4 mr-1.5" />
+                                        Stop Session
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

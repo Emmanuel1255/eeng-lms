@@ -7,7 +7,8 @@ import LecturerLayout from '../../../components/layout/LecturerLayout';
 import { moduleService } from '../../../services/moduleService';
 
 const ModuleEnrollment = () => {
-  const { id } = useParams();
+  const { id }  = useParams();
+  const moduleId = id;
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
