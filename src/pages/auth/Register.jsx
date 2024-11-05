@@ -11,15 +11,12 @@ const Register = () => {
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch('http://localhost:5003/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+      const response = await authService.register(data);
+      console.log(response);
 
-      const result = await response.json();
+      const result = await response;
 
-      if (!response.ok) {
+      if (!response.success) {
         throw new Error(result.error || 'Registration failed');
       }
 
