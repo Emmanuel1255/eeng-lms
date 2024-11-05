@@ -258,7 +258,6 @@ const GradeManagement = () => {
 
     return (
         <LecturerLayout>
-            <Card className="w-full">
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Grade Management</CardTitle>
                     <div className="flex space-x-2">
@@ -597,7 +596,6 @@ const GradeManagement = () => {
                         </div>
                     )}
                 </CardContent>
-            </Card>
         </LecturerLayout>
     );
 };
