@@ -1,10 +1,16 @@
 // src/App.jsx
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ProtectedRoute from './components/common/ProtectedRoute';
-import StudentDashboard from './pages/dashboard/student/Dashboard';
+
+// Student
+import StudentDashboard from './pages/student/Dashboard';
+import StudentModuleList from './pages/student/StudentModuleList';
+import StudentGrades from './pages/student/StudentGrades';
+import AttendanceView from './pages/student/AttendanceView';
+import StudentProfile from './pages/student/StudentProfile';
 
 // Lecturer
 import LecturerDashboard from './pages/lecturer/Dashboard';
@@ -23,35 +29,38 @@ function App() {
   return (
     <>
       <Toaster position="top-right" />
-      <Router>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Student Routes */}
-          <Route element={<ProtectedRoute roles={['student']} />}>
-            <Route path="/student" element={<StudentDashboard />} />
-          </Route>
-          
-          {/* Lecturer Routes */}
-          <Route element={<ProtectedRoute roles={['lecturer']} />}>
-            <Route path="/lecturer" element={<LecturerDashboard />} />
-            <Route path="/lecturer/dashboard" element={<LecturerDashboard />} />
-            <Route path="/lecturer/modules" element={<ModuleList />} />
-            <Route path="/lecturer/modules/new" element={<AddModule />} />
-            <Route path="/lecturer/modules/edit/:id" element={<EditModule />} />
-            <Route path="/lecturer/students" element={<StudentList />} />
-            <Route path="/lecturer/modules/:id/enrollment" element={<ModuleEnrollment />} />
-            <Route path="/lecturer/modules/:moduleId/attendance" element={<AttendanceManagement />} />
-            <Route path="/lecturer/modules/:id/attendance-list" element={<AttendanceListView />} />
-            <Route path="/lecturer/modules/:moduleId/attendance/mark" element={<MarkAttendance />} />
-            {/* Grade Management */}
-            <Route path="/lecturer/modules/:moduleId/grades" element={<GradeManagement />} />
-            <Route path="/lecturer/modules/:moduleId/grades/overview" element={<ModuleGrades />} />
-          </Route>
-        </Routes>
-      </Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        {/* Student Routes */}
+        <Route element={<ProtectedRoute roles={['student']} />}>
+          <Route path="/student" element={<StudentDashboard />} />
+          <Route path="/student/dashboard" element={<StudentDashboard />} />
+          <Route path="/student/modules" element={<StudentModuleList />} />
+          <Route path="/student/grades" element={<StudentGrades />} />
+          <Route path="/student/attendance" element={<AttendanceView />} />
+          <Route path='/student/profile' element={<StudentProfile />} />
+        </Route>
+        
+        {/* Lecturer Routes */}
+        <Route element={<ProtectedRoute roles={['lecturer']} />}>
+          <Route path="/lecturer" element={<LecturerDashboard />} />
+          <Route path="/lecturer/dashboard" element={<LecturerDashboard />} />
+          <Route path="/lecturer/modules" element={<ModuleList />} />
+          <Route path="/lecturer/modules/new" element={<AddModule />} />
+          <Route path="/lecturer/modules/edit/:id" element={<EditModule />} />
+          <Route path="/lecturer/students" element={<StudentList />} />
+          <Route path="/lecturer/modules/:id/enrollment" element={<ModuleEnrollment />} />
+          <Route path="/lecturer/modules/:moduleId/attendance" element={<AttendanceManagement />} />
+          <Route path="/lecturer/modules/:id/attendance-list" element={<AttendanceListView />} />
+          <Route path="/lecturer/modules/:moduleId/attendance/mark" element={<MarkAttendance />} />
+          {/* Grade Management */}
+          <Route path="/lecturer/modules/:moduleId/grades" element={<GradeManagement />} />
+          <Route path="/lecturer/modules/:moduleId/grades/overview" element={<ModuleGrades />} />
+        </Route>
+      </Routes>
     </>
   );
 }

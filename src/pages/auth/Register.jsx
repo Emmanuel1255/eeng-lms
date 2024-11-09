@@ -4,17 +4,43 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { authService } from '../../services/api';
 
+const faculties = [
+  'Engineering',
+  'Science',
+  'Arts',
+  'Business',
+  'Medicine',
+  'Law'
+];
+
+const departments = {
+  Engineering: [
+    'Electrical Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering',
+    'Chemical Engineering',
+    'Computer Engineering'
+  ],
+  Science: [
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Mathematics',
+    'Computer Science'
+  ],
+  // Add more faculty-department mappings as needed
+};
+
 const Register = () => {
   const [error, setError] = useState('');
+  const [selectedFaculty, setSelectedFaculty] = useState('');
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors }, watch } = useForm();
 
   const onSubmit = async (data) => {
     try {
       const response = await authService.register(data);
       console.log(response);
-
-      const result = await response;
 
       if (!response.success) {
         throw new Error(result.error || 'Registration failed');
@@ -36,36 +62,96 @@ const Register = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {error && (
-            <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded relative mb-4">
-              {error}
-            </div>
-          )}
-
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            {/* Existing fields */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-200">
+                  First Name
+                </label>
+                <input
+                  {...register('firstName', { required: 'First name is required' })}
+                  className="mt-1 block w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md"
+                />
+                {errors.firstName && (
+                  <p className="mt-1 text-sm text-red-400">{errors.firstName.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-200">
+                  Last Name
+                </label>
+                <input
+                  {...register('lastName', { required: 'Last name is required' })}
+                  className="mt-1 block w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md"
+                />
+                {errors.lastName && (
+                  <p className="mt-1 text-sm text-red-400">{errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Gender Selection */}
             <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-200">
-                First Name
+              <label className="block text-sm font-medium text-gray-200">
+                Gender
               </label>
-              <input
-                {...register('firstName', { required: 'First name is required' })}
-                className="mt-1 block w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              {errors.firstName && (
-                <p className="mt-1 text-sm text-red-400">{errors.firstName.message}</p>
+              <select
+                {...register('gender', { required: 'Gender is required' })}
+                className="mt-1 block w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md"
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+              {errors.gender && (
+                <p className="mt-1 text-sm text-red-400">{errors.gender.message}</p>
               )}
             </div>
 
+            {/* Faculty Selection */}
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-200">
-                Last Name
+              <label className="block text-sm font-medium text-gray-200">
+                Faculty
               </label>
-              <input
-                {...register('lastName', { required: 'Last name is required' })}
-                className="mt-1 block w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              {errors.lastName && (
-                <p className="mt-1 text-sm text-red-400">{errors.lastName.message}</p>
+              <select
+                {...register('faculty', { required: 'Faculty is required' })}
+                onChange={(e) => setSelectedFaculty(e.target.value)}
+                className="mt-1 block w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md"
+              >
+                <option value="">Select Faculty</option>
+                {faculties.map((faculty) => (
+                  <option key={faculty} value={faculty}>
+                    {faculty}
+                  </option>
+                ))}
+              </select>
+              {errors.faculty && (
+                <p className="mt-1 text-sm text-red-400">{errors.faculty.message}</p>
+              )}
+            </div>
+
+            {/* Department Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-200">
+                Department
+              </label>
+              <select
+                {...register('department', { required: 'Department is required' })}
+                className="mt-1 block w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-md"
+                disabled={!selectedFaculty}
+              >
+                <option value="">Select Department</option>
+                {selectedFaculty && departments[selectedFaculty]?.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              {errors.department && (
+                <p className="mt-1 text-sm text-red-400">{errors.department.message}</p>
               )}
             </div>
 
@@ -125,7 +211,7 @@ const Register = () => {
 
             <button
               type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
             >
               Sign up
             </button>

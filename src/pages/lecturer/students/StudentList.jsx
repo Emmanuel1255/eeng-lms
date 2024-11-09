@@ -1,8 +1,9 @@
-// src/pages/lecturer/students/StudentList.jsx
 import { useState, useEffect } from 'react';
 import { Search, Download } from 'lucide-react';
 import LecturerLayout from '../../../components/layout/LecturerLayout';
 import { moduleService } from '../../../services/moduleService';
+import { gradeService } from '../../../services/gradeService';
+import { attendanceServiceStop } from '../../../services/attendanceService';
 import { toast } from 'react-hot-toast';
 
 const StudentList = () => {
@@ -10,10 +11,19 @@ const StudentList = () => {
   const [modules, setModules] = useState([]);
   const [selectedModule, setSelectedModule] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [attendanceData, setAttendanceData] = useState({});
+  const [grades, setGrades] = useState({});
+  const [moduleDetails, setModuleDetails] = useState(null);
 
   useEffect(() => {
     fetchModules();
   }, []);
+
+  useEffect(() => {
+    if (selectedModule) {
+      fetchModuleData(selectedModule);
+    }
+  }, [selectedModule]);
 
   const fetchModules = async () => {
     try {
@@ -24,6 +34,80 @@ const StudentList = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchModuleData = async (moduleId) => {
+    try {
+      const [moduleResponse, gradesResponse, attendanceResponse] = await Promise.all([
+        moduleService.getModuleById(moduleId),
+        gradeService.getModuleGrades(moduleId),
+        attendanceServiceStop.getModuleAttendance(moduleId)
+      ]);
+
+      if (moduleResponse.success) {
+        setModuleDetails(moduleResponse.data);
+      }
+
+      if (gradesResponse.success) {
+        setGrades(gradesResponse.data || {});
+      }
+
+      if (attendanceResponse.success) {
+        // Process attendance data
+        const processedAttendance = {};
+        attendanceResponse.data.forEach(session => {
+          session.students.forEach(studentRecord => {
+            const studentId = studentRecord.student._id;
+            if (!processedAttendance[studentId]) {
+              processedAttendance[studentId] = {
+                total: 0,
+                present: 0,
+                late: 0,
+                absent: 0
+              };
+            }
+            processedAttendance[studentId].total++;
+            processedAttendance[studentId][studentRecord.status]++;
+          });
+        });
+        setAttendanceData(processedAttendance);
+      }
+    } catch (error) {
+      toast.error('Failed to fetch module data');
+    }
+  };
+
+  const calculateAttendanceGrade = (studentId) => {
+    const studentAttendance = attendanceData[studentId] || { present: 0, late: 0, total: 0 };
+    const presentSessions = studentAttendance.present + (studentAttendance.late * 0.5);
+    const totalSessions = studentAttendance.total || 1;
+    const attendancePercentage = (presentSessions / totalSessions) * 100;
+    return ((attendancePercentage / 100) * 5).toFixed(2);
+  };
+
+  const calculateFinalGrade = (studentId) => {
+    const studentGrades = grades[studentId] || {};
+    
+    const attendanceGrade = parseFloat(calculateAttendanceGrade(studentId));
+    const testGrade = studentGrades.test || 0;
+    const assignmentGrade = studentGrades.assignment || 0;
+    const examGrade = studentGrades.exam || 0;
+
+    const finalGrade = attendanceGrade + testGrade + assignmentGrade + examGrade;
+    return { percentage: finalGrade.toFixed(2) };
+  };
+
+  const getLetterGrade = (percentage) => {
+    if (percentage >= 70) return 'A';
+    if (percentage >= 65) return 'B+';
+    if (percentage >= 60) return 'B';
+    if (percentage >= 55) return 'B-';
+    if (percentage >= 50) return 'C+';
+    if (percentage >= 45) return 'C';
+    if (percentage >= 40) return 'C-';
+    if (percentage >= 35) return 'D+';
+    if (percentage >= 30) return 'D';
+    return 'F';
   };
 
   const getFilteredStudents = () => {
@@ -38,24 +122,35 @@ const StudentList = () => {
     );
   };
 
-
   const handleExportToCSV = () => {
     const students = getFilteredStudents();
     if (students.length === 0) {
       toast.error('No students to export');
       return;
     }
-
+  
     const csvContent = [
-      ['Student ID', 'First Name', 'Last Name', 'Email'],
-      ...students.map(student => [
-        student.studentId,
-        student.firstName,
-        student.lastName,
-        student.email
-      ])
+      ['Student ID', 'First Name', 'Last Name', 'Email', 'Total Sessions', 'Present Sessions', 'Attendance Rate', 'Final Grade', 'Letter Grade'],
+      ...students.map(student => {
+        const studentAttendance = attendanceData[student._id] || { total: 0, present: 0, late: 0 };
+        const finalGrade = calculateFinalGrade(student._id);
+        const presentSessions = studentAttendance.present + (studentAttendance.late * 0.5);
+        const attendanceRate = ((presentSessions / (studentAttendance.total || 1)) * 100).toFixed(1);
+  
+        return [
+          student.studentId,
+          student.firstName,
+          student.lastName,
+          student.email,
+          studentAttendance.total,
+          presentSessions.toFixed(1),
+          `${attendanceRate}%`,
+          finalGrade.percentage,
+          getLetterGrade(parseFloat(finalGrade.percentage))
+        ];
+      })
     ].map(row => row.join(',')).join('\n');
-
+  
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -89,6 +184,7 @@ const StudentList = () => {
 
         {/* Filters */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Module Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Select Module
@@ -107,6 +203,7 @@ const StudentList = () => {
             </select>
           </div>
 
+          {/* Search Box */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Search Students
@@ -125,6 +222,7 @@ const StudentList = () => {
             </div>
           </div>
 
+          {/* Export Button */}
           <div className="flex items-end">
             <button
               onClick={handleExportToCSV}
@@ -147,47 +245,79 @@ const StudentList = () => {
           {selectedModule ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-border">
-                <thead className="bg-gray-50 dark:bg-dark-paper">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Student ID
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-dark-paper divide-y divide-gray-200 dark:divide-dark-border">
-                  {getFilteredStudents().map((student) => (
-                    <tr key={student._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {student.studentId}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {student.firstName} {student.lastName}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {student.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => {/* View student details */}}
-                          className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
-                        >
-                          View Details
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+              <thead className="bg-gray-50 dark:bg-dark-paper">
+  <tr>
+    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      Student ID
+    </th>
+    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      Name
+    </th>
+    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      Email
+    </th>
+    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      Total Sessions
+    </th>
+    
+    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      Final Grade
+    </th>
+    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+      Letter Grade
+    </th>
+  </tr>
+</thead>
+<tbody className="bg-white dark:bg-dark-paper divide-y divide-gray-200 dark:divide-dark-border">
+  {getFilteredStudents().map((student) => {
+    const studentAttendance = attendanceData[student._id] || { total: 0, present: 0, late: 0 };
+    const finalGrade = calculateFinalGrade(student._id);
+    const letterGrade = getLetterGrade(parseFloat(finalGrade.percentage));
+    const presentSessions = studentAttendance.present + (studentAttendance.late * 0.5);
+    const attendanceRate = ((presentSessions / (studentAttendance.total || 1)) * 100).toFixed(1);
+
+    return (
+      <tr key={student._id}>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+          {student.studentId}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="text-sm text-gray-900 dark:text-white">
+            {student.firstName} {student.lastName}
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+          {student.email}
+        </td>
+        {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+          {studentAttendance.total}
+        </td> */}
+        <td className="px-6 py-4 whitespace-nowrap text-sm">
+          <div className="flex items-center">
+            <span className={`font-medium items-center ${
+              parseFloat(attendanceRate) >= 80 ? 'text-green-600' :
+              parseFloat(attendanceRate) >= 60 ? 'text-yellow-600' :
+              'text-red-600'
+            }`}>
+              {presentSessions.toFixed(1)}/{studentAttendance.total}
+            </span>
+            {/* <span className="ml-2 text-gray-500">
+              ({attendanceRate}%)
+            </span> */}
+          </div>
+        </td>
+        <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold
+          ${parseFloat(finalGrade.percentage) >= 40 ? 'text-green-600' : 'text-red-600'}`}>
+          {finalGrade.percentage}%
+        </td>
+        <td className={`px-6 py-4 whitespace-nowrap text-sm font-semibold
+          ${parseFloat(finalGrade.percentage) >= 40 ? 'text-green-600' : 'text-red-600'}`}>
+          {letterGrade}
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
               </table>
               
               {getFilteredStudents().length === 0 && (

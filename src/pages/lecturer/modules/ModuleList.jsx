@@ -1,13 +1,13 @@
 // src/pages/lecturer/modules/ModuleList.jsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import { 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  UserPlus, 
-  ClipboardCheck, 
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  UserPlus,
+  ClipboardCheck,
   List,
   GraduationCap,
   BookOpen,
@@ -25,6 +25,7 @@ const ModuleList = () => {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const { moduleId } = useParams();
 
   useEffect(() => {
     fetchModules();
@@ -107,6 +108,9 @@ const ModuleList = () => {
           </p>
           <div className="text-sm text-gray-500 dark:text-gray-400">
             Schedule: {module.schedule.day} {module.schedule.startTime} - {module.schedule.endTime}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Credit Hours: {module.creditHours}
           </div>
         </div>
 

@@ -1,13 +1,47 @@
-// src/pages/lecturer/modules/ModuleEnrollment.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Search, Upload, UserPlus, UserMinus, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import LecturerLayout from '../../../components/layout/LecturerLayout';
 import { moduleService } from '../../../services/moduleService';
 
+// Faculty and Department data
+const faculties = [
+  'Engineering',
+  'Science',
+  'Arts',
+  'Business',
+  'Medicine',
+  'Law'
+];
+
+const departments = {
+  Engineering: [
+    'Electrical Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering',
+    'Chemical Engineering',
+    'Computer Engineering'
+  ],
+  Science: [
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Mathematics',
+    'Computer Science'
+  ],
+  // Add other departments for different faculties
+};
+
 const ModuleEnrollment = () => {
-  const { id }  = useParams();
+  const { id } = useParams();
   const moduleId = id;
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -19,7 +53,10 @@ const ModuleEnrollment = () => {
     studentId: '',
     email: '',
     firstName: '',
-    lastName: ''
+    lastName: '',
+    gender: '',
+    faculty: '',
+    department: ''
   });
   const [error, setError] = useState('');
 
@@ -52,7 +89,15 @@ const ModuleEnrollment = () => {
       await moduleService.addStudent(id, studentData);
       toast.success('Student added successfully');
       fetchModuleDetails();
-      setNewStudent({ studentId: '', firstName: '', lastName: '' });
+      setNewStudent({
+        studentId: '',
+        email: '',
+        firstName: '',
+        lastName: '',
+        gender: '',
+        faculty: '',
+        department: ''
+      });
     } catch (error) {
       setError(error.response?.data?.error || 'Failed to add student');
       toast.error('Failed to add student');
@@ -83,7 +128,7 @@ const ModuleEnrollment = () => {
   
     setUploading(true);
     const formData = new FormData();
-    formData.append('csvFile', file); // Changed 'file' to 'csvFile'
+    formData.append('csvFile', file);
   
     try {
       await moduleService.uploadStudents(id, formData);
@@ -109,8 +154,6 @@ const ModuleEnrollment = () => {
     );
   }) || [];
 
-  console.log("Student", module?.enrolledStudents);
-
   if (loading) {
     return (
       <LecturerLayout>
@@ -124,7 +167,7 @@ const ModuleEnrollment = () => {
   return (
     <LecturerLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header and Stats Card sections remain the same */}
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
             Student Enrollment: {module.code} - {module.name}
@@ -134,7 +177,6 @@ const ModuleEnrollment = () => {
           </p>
         </div>
 
-        {/* Stats Card */}
         <div className="bg-white dark:bg-dark-paper shadow rounded-lg p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
@@ -175,12 +217,11 @@ const ModuleEnrollment = () => {
 
               <form onSubmit={handleAddStudent} className="space-y-4">
                 <div>
-                  <label htmlFor="studentId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Student ID
                   </label>
                   <input
                     type="text"
-                    id="studentId"
                     value={newStudent.studentId}
                     onChange={(e) => setNewStudent({ ...newStudent, studentId: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border dark:bg-dark-paper dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
@@ -189,12 +230,11 @@ const ModuleEnrollment = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Email
                   </label>
                   <input
                     type="email"
-                    id="email"
                     value={newStudent.email}
                     onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border dark:bg-dark-paper dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
@@ -204,12 +244,11 @@ const ModuleEnrollment = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       First Name
                     </label>
                     <input
                       type="text"
-                      id="firstName"
                       value={newStudent.firstName}
                       onChange={(e) => setNewStudent({ ...newStudent, firstName: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border dark:bg-dark-paper dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
@@ -218,18 +257,88 @@ const ModuleEnrollment = () => {
                   </div>
 
                   <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Last Name
                     </label>
                     <input
                       type="text"
-                      id="lastName"
                       value={newStudent.lastName}
                       onChange={(e) => setNewStudent({ ...newStudent, lastName: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border dark:bg-dark-paper dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
                       required
                     />
                   </div>
+                </div>
+
+                {/* Gender Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Gender
+                  </label>
+                  <Select
+                    value={newStudent.gender}
+                    onValueChange={(value) => setNewStudent({ ...newStudent, gender: value })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Faculty Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Faculty
+                  </label>
+                  <Select
+                    value={newStudent.faculty}
+                    onValueChange={(value) => {
+                      setNewStudent({ 
+                        ...newStudent, 
+                        faculty: value,
+                        department: '' // Reset department when faculty changes
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Faculty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {faculties.map((faculty) => (
+                        <SelectItem key={faculty} value={faculty}>
+                          {faculty}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Department Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Department
+                  </label>
+                  <Select
+                    value={newStudent.department}
+                    onValueChange={(value) => setNewStudent({ ...newStudent, department: value })}
+                    disabled={!newStudent.faculty}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {newStudent.faculty && departments[newStudent.faculty]?.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {error && (
@@ -272,7 +381,7 @@ const ModuleEnrollment = () => {
                     {uploading ? 'Uploading...' : 'Upload CSV'}
                   </button>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    CSV format: studentId, email, firstName, lastName
+                    CSV format: studentId, email, firstName, lastName, gender, faculty, department
                   </p>
                 </div>
 
@@ -283,8 +392,7 @@ const ModuleEnrollment = () => {
                       Download our CSV template to ensure correct formatting
                     </span>
                   </div>
-                  <a
-                    href="/student_template.csv"
+                  <a href="/student_template.csv"
                     download
                     className="inline-block mt-2 text-sm underline"
                   >
@@ -329,6 +437,15 @@ const ModuleEnrollment = () => {
                           Name
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Gender
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Faculty
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Department
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Email
                         </th>
                         <th scope="col" className="relative px-6 py-3">
@@ -344,6 +461,15 @@ const ModuleEnrollment = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {student.firstName} {student.lastName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 capitalize">
+                            {student.gender}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {student.faculty}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {student.department}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {student.email}

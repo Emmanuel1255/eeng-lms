@@ -47,8 +47,11 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <h1 className="text-center text-4xl font-bold text-white">
+        EENG LMS
+      </h1>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-center text-3xl font-bold text-white">
+        <h2 className="text-center text-2xl font-bold text-white">
           Sign in to your account
         </h2>
       </div>
@@ -99,7 +102,7 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <div className="relative">
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 text-gray-400">
@@ -110,7 +113,7 @@ const Login = () => {
                 </span>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

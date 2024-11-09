@@ -7,6 +7,9 @@ import { toast } from 'react-hot-toast';
 
 const EditModule = () => {
   const { id } = useParams();
+  console.log("ID",id);
+  const moduleId  = id;
+  console.log("ModuleID",moduleId);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -15,6 +18,7 @@ const EditModule = () => {
     name: '',
     level: '',
     description: '',
+    creditHours: 3,
     schedule: {
       day: '',
       startTime: '',
@@ -97,7 +101,7 @@ const EditModule = () => {
     try {
       // Validate assessment weights total 100%
       const totalWeight = Object.entries(formData.assessmentMethods)
-        .reduce((sum, [key, enabled]) => 
+        .reduce((sum, [key, enabled]) =>
           enabled ? sum + formData.assessmentWeights[key] : sum, 0);
 
       if (totalWeight !== 100) {
@@ -146,7 +150,7 @@ const EditModule = () => {
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                   Basic Information
                 </h2>
-                
+
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -197,6 +201,23 @@ const EditModule = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Credit Hours
+                    </label>
+                    <input
+                      type="number"
+                      name="creditHours"
+                      value={formData.creditHours}
+                      onChange={handleInputChange}
+                      min="1"
+                      max="6"
+                      className="mt-1 block w-full rounded-md border-gray-300 dark:border-dark-border dark:bg-dark-paper dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">Must be between 1 and 6 credit hours</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Maximum Students
                     </label>
                     <input
@@ -229,7 +250,7 @@ const EditModule = () => {
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                   Schedule
                 </h2>
-                
+
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -325,7 +346,7 @@ const EditModule = () => {
                       </span>
                       <span className="text-sm font-bold text-primary-700 dark:text-primary-300">
                         {Object.entries(formData.assessmentMethods)
-                          .reduce((total, [key, enabled]) => 
+                          .reduce((total, [key, enabled]) =>
                             enabled ? total + formData.assessmentWeights[key] : total, 0)}%
                       </span>
                     </div>

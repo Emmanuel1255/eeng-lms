@@ -99,5 +99,18 @@ uploadStudents: async (moduleId, formData) => {
     console.error('CSV Upload Error:', error);
     throw error;
   }
-}
+},
+
+
+getStudentModules: async () => {
+  const response = await api.get('/modules/student/modules');
+  return response.data;
+},
+
+getStudentCreditHours: async (studentId) => {
+  const response = await api.get(`/modules/student/${studentId}/credit-hours`);
+  return response.data;
+},
+
+
 };

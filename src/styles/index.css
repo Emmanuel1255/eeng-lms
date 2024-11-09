@@ -10,6 +10,6 @@
     @apply bg-primary-600 text-white hover:bg-primary-700;
   }
   .input {
-    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500;
+    /* @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500; */
   }
 }

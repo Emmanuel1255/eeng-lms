@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LecturerLayout from '../../../components/layout/LecturerLayout';
-import {  attendanceService, moduleService } from '../../../services/api';
+import { attendanceService, moduleService } from '../../../services/api';
 import { attendanceServiceStop, formatTimeForAPI } from '../../../services/attendanceService';
 
 const MarkAttendance = () => {
@@ -200,20 +200,20 @@ const MarkAttendance = () => {
                 toast.error('No active session found');
                 return;
             }
-    
+
             console.log('Stopping session:', todaySession._id);
-            
+
             const response = await attendanceServiceStop.updateSessionStatus(todaySession._id, 'completed');
             console.log('Stop session response:', response);
-    
+
             if (response.success) {
                 // Update local state
                 const updatedSession = { ...todaySession, status: 'completed' };
                 setTodaySession(updatedSession);
-                
+
                 // Refresh attendance data
                 await fetchAttendanceData();
-                
+
                 toast.success('Session stopped successfully');
             } else {
                 throw new Error('Failed to stop session');
@@ -344,140 +344,122 @@ const MarkAttendance = () => {
                 {/* QR Code Modal */}
                 <QRCodeModal />
 
-                {todaySession && todaySession.status !== 'completed' && (
-                    <div className="bg-white dark:bg-dark-paper shadow rounded-lg p-4">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                                    Today's Session
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                    Started at: {todaySession.startTime}
-                                </p>
+                {todaySession && (
+                    <div className="bg-white dark:bg-dark-paper shadow overflow-hidden sm:rounded-lg">
+                        <div className="px-4 py-4 sm:px-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <Calendar className="h-5 w-5 text-gray-400 mr-2" />
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {new Date(todaySession.date).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${todaySession.status === 'completed'
+                                            ? 'bg-red-100 text-red-800'
+                                            : 'bg-green-100 text-green-800'
+                                        }`}>
+                                        {todaySession.status === 'completed' ? 'Completed' : 'Active'}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex items-center space-x-4">
-                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${todaySession.status === 'completed'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-green-100 text-green-800'
-                                    }`}>
-                                    {todaySession.status === 'completed' ? 'Completed' : 'Active'}
-                                </span>
-                                {todaySession.status !== 'completed' && (
-                                    <button
-                                        onClick={handleStopSession}
-                                        className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100"
-                                    >
-                                        <Clock className="h-4 w-4 mr-1.5" />
-                                        Stop Session
-                                    </button>
-                                )}
+
+                            <div className="mt-4">
+                                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                    <Users className="h-5 w-5 mr-2" />
+                                    <span>
+                                        Present: {todaySession.students.filter(s => s.status === 'present').length} / {todaySession.students.length}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Student List */}
+                            <div className="mt-4">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-border">
+                                    <thead className="bg-gray-50 dark:bg-dark-paper">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Student
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Status
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white dark:bg-dark-paper divide-y divide-gray-200 dark:divide-dark-border">
+                                        {todaySession.students.map((student) => (
+                                            <tr key={student._id}>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center">
+                                                        <div>
+                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                                                {student.student.firstName} {student.student.lastName}
+                                                            </div>
+                                                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                                                                {student.student.studentId}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${student.status === 'present'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : student.status === 'late'
+                                                                ? 'bg-yellow-100 text-yellow-800'
+                                                                : 'bg-red-100 text-red-800'
+                                                        }`}>
+                                                        {student.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <div className="flex justify-end space-x-2">
+                                                        <button
+                                                            onClick={() => updateAttendanceStatus(todaySession._id, student.student._id, 'present')}
+                                                            disabled={todaySession.status === 'completed'}
+                                                            className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <CheckCircle className="h-5 w-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => updateAttendanceStatus(todaySession._id, student.student._id, 'late')}
+                                                            disabled={todaySession.status === 'completed'}
+                                                            className="text-yellow-600 hover:text-yellow-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <AlertCircle className="h-5 w-5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => updateAttendanceStatus(todaySession._id, student.student._id, 'absent')}
+                                                            disabled={todaySession.status === 'completed'}
+                                                            className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <XCircle className="h-5 w-5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Attendance Records */}
-                <div className="bg-white dark:bg-dark-paper shadow overflow-hidden sm:rounded-lg">
-                    <ul className="divide-y divide-gray-200 dark:divide-dark-border">
-                        {attendanceRecords.map((record) => (
-                            <li key={record._id}>
-                                <div className="px-4 py-4 sm:px-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center">
-                                            <Calendar className="h-5 w-5 text-gray-400 mr-2" />
-                                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                {new Date(record.date).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {record.type}
-                                            </span>
-                                        </div>
-                                    </div>
+                {!todaySession && (
+                    <div className="bg-white dark:bg-dark-paper shadow rounded-lg p-8">
+                        <div className="text-center">
+                            <Users className="mx-auto h-12 w-12 text-gray-400" />
+                            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No Active Session</h3>
+                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                Start a new session to begin taking attendance.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
-                                    <div className="mt-4">
-                                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                            <Users className="h-5 w-5 mr-2" />
-                                            <span>
-                                                Present: {record.students.filter(s => s.status === 'present').length} / {record.students.length}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Student List */}
-                                    <div className="mt-4">
-                                        <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-border">
-                                            <thead className="bg-gray-50 dark:bg-dark-paper">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                                        Student
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                                        Status
-                                                    </th>
-                                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                                        Actions
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white dark:bg-dark-paper divide-y divide-gray-200 dark:divide-dark-border">
-                                                {record.students.map((student) => (
-                                                    <tr key={student._id}>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <div className="flex items-center">
-                                                                <div>
-                                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                                                        {student.student.firstName} {student.student.lastName}
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                                                                        {student.student.studentId}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${student.status === 'present'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : student.status === 'late'
-                                                                    ? 'bg-yellow-100 text-yellow-800'
-                                                                    : 'bg-red-100 text-red-800'
-                                                                }`}>
-                                                                {student.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                            <div className="flex justify-end space-x-2">
-                                                                <button
-                                                                    onClick={() => updateAttendanceStatus(record._id, student.student._id, 'present')}
-                                                                    className="text-green-600 hover:text-green-900"
-                                                                >
-                                                                    <CheckCircle className="h-5 w-5" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => updateAttendanceStatus(record._id, student.student._id, 'late')}
-                                                                    className="text-yellow-600 hover:text-yellow-900"
-                                                                >
-                                                                    <AlertCircle className="h-5 w-5" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => updateAttendanceStatus(record._id, student.student._id, 'absent')}
-                                                                    className="text-red-600 hover:text-red-900"
-                                                                >
-                                                                    <XCircle className="h-5 w-5" />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
             </div>
         </LecturerLayout>
     );
