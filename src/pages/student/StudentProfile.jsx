@@ -30,7 +30,7 @@ const faculties = [
 
 const departments = {
   Engineering: [
-    'Electrical Engineering', // Remove '& Electronic' to match backend
+    'Electrical Engineering',
     'Mechanical Engineering',
     'Civil Engineering',
     'Mining Engineering',

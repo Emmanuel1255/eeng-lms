@@ -1,1 +1,5 @@
-studentId,email,firstName,lastName
+studentId,email,firstName,lastName,gender,faculty,department
+,,,,,Engineering,Electrical Engineering
+,,,,,Engineering,Mechanical Engineering
+,,,,,Engineering,Civil Engineering
+,,,,,Engineering,Mining Engineering

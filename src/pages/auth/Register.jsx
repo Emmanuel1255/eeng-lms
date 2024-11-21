@@ -18,8 +18,8 @@ const departments = {
     'Electrical Engineering',
     'Mechanical Engineering',
     'Civil Engineering',
-    'Chemical Engineering',
-    'Computer Engineering'
+    'Mining Engineering',
+    'Architecture'
   ],
   Science: [
     'Physics',
