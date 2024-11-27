@@ -1,4 +1,3 @@
-// src/pages/lecturer/attendance/MarkAttendance.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
@@ -31,8 +30,9 @@ const MarkAttendance = () => {
     const [qrRefreshing, setQrRefreshing] = useState(false);
     const [todaySession, setTodaySession] = useState(null);
     const [sessionStatus, setSessionStatus] = useState('pending');
+    const [selectedDepartment, setSelectedDepartment] = useState('');
+    const [departments, setDepartments] = useState([]);
 
-    // Fetch module details
     const fetchModuleDetails = useCallback(async () => {
         try {
             const response = await moduleService.getModuleById(moduleId);
@@ -46,7 +46,6 @@ const MarkAttendance = () => {
     const fetchAttendanceData = useCallback(async () => {
         try {
             const response = await attendanceService.getModuleAttendance(moduleId);
-            console.log('Attendance data:', response.data);
             setAttendanceRecords(response.data.data || []);
         } catch (error) {
             console.error('Fetch attendance error:', error);
@@ -61,6 +60,15 @@ const MarkAttendance = () => {
         fetchAttendanceData();
     }, [fetchModuleDetails, fetchAttendanceData]);
 
+    useEffect(() => {
+        if (todaySession?.students) {
+            const uniqueDepartments = [...new Set(todaySession.students.map(
+                student => student.student.department
+            ))];
+            setDepartments(uniqueDepartments);
+        }
+    }, [todaySession]);
+
     const fetchTodaySession = useCallback(async () => {
         const today = new Date().toISOString().split('T')[0];
         const sessions = attendanceRecords.filter(record =>
@@ -70,19 +78,8 @@ const MarkAttendance = () => {
     }, [attendanceRecords]);
 
     useEffect(() => {
-        fetchModuleDetails();
-        fetchAttendanceData();
-    }, [fetchModuleDetails, fetchAttendanceData]);
-
-    useEffect(() => {
         fetchTodaySession();
     }, [attendanceRecords, fetchTodaySession]);
-
-    const formatTimeForAPI = (date) => {
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    };
 
     const createAttendanceSession = async () => {
         try {
@@ -98,12 +95,8 @@ const MarkAttendance = () => {
                 type: 'lecture'
             };
 
-            console.log('Creating attendance session with data:', data);
-
             const response = await attendanceService.createAttendance(data);
-            console.log('Attendance creation response:', response);
-
-            const attendanceData = response?.data?.data;
+            const attendanceData = response?.data;
 
             if (!attendanceData || !attendanceData._id) {
                 throw new Error('Invalid session creation response');
@@ -121,21 +114,15 @@ const MarkAttendance = () => {
         }
     };
 
-    // console.log("todaySession",todaySession);
-
     const handleQRCodeGeneration = async (attendanceId) => {
         try {
             setQrRefreshing(true);
-            console.log('Generating QR code for attendance ID:', attendanceId);
-
             const qrResponse = await attendanceService.generateQRCode(attendanceId);
-            console.log('QR code generation response:', qrResponse);
 
             if (!qrResponse?.data) {
                 throw new Error('Failed to generate QR code');
             }
 
-            // Create QR code data
             const qrData = JSON.stringify({
                 attendanceId: attendanceId,
                 timestamp: new Date().toISOString(),
@@ -143,11 +130,9 @@ const MarkAttendance = () => {
                 type: 'attendance'
             });
 
-            console.log('Setting QR code data:', qrData);
             setQRCodeData(qrData);
             setShowQRCode(true);
 
-            // Set up auto-refresh
             setTimeout(() => {
                 if (currentSession?._id === attendanceId) {
                     handleQRCodeGeneration(attendanceId);
@@ -163,7 +148,6 @@ const MarkAttendance = () => {
         }
     };
 
-
     const handleGenerateQR = async () => {
         if (!todaySession?._id) {
             toast.error('No active session found for today');
@@ -172,8 +156,7 @@ const MarkAttendance = () => {
 
         try {
             setQrRefreshing(true);
-            const qrResponse = await handleQRCodeGeneration(todaySession._id);
-            console.log('QR Response:', qrResponse);
+            await handleQRCodeGeneration(todaySession._id);
             setShowQRCode(true);
         } catch (error) {
             console.error('QR generation error:', error);
@@ -201,19 +184,12 @@ const MarkAttendance = () => {
                 return;
             }
 
-            console.log('Stopping session:', todaySession._id);
-
             const response = await attendanceServiceStop.updateSessionStatus(todaySession._id, 'completed');
-            console.log('Stop session response:', response);
 
             if (response.success) {
-                // Update local state
                 const updatedSession = { ...todaySession, status: 'completed' };
                 setTodaySession(updatedSession);
-
-                // Refresh attendance data
                 await fetchAttendanceData();
-
                 toast.success('Session stopped successfully');
             } else {
                 throw new Error('Failed to stop session');
@@ -271,6 +247,10 @@ const MarkAttendance = () => {
         );
     };
 
+    const filteredStudents = todaySession?.students.filter(student => 
+        !selectedDepartment || student.student.department === selectedDepartment
+    );
+
     if (loading) {
         return (
             <LecturerLayout>
@@ -316,7 +296,6 @@ const MarkAttendance = () => {
                             )}
                         </button>
 
-
                         <button
                             onClick={() => navigate(`/lecturer/modules/${module._id}/attendance-list`)}
                             className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
@@ -341,8 +320,28 @@ const MarkAttendance = () => {
                     </div>
                 </div>
 
-                {/* QR Code Modal */}
                 <QRCodeModal />
+
+                {/* Department Filter */}
+                {todaySession && (
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Filter by Department
+                        </label>
+                        <select
+                            value={selectedDepartment}
+                            onChange={(e) => setSelectedDepartment(e.target.value)}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300"
+                        >
+                            <option value="">All Departments</option>
+                            {departments.map(dept => (
+                                <option key={dept} value={dept}>
+                                    {dept}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
                 {todaySession && (
                     <div className="bg-white dark:bg-dark-paper shadow overflow-hidden sm:rounded-lg">
@@ -355,12 +354,13 @@ const MarkAttendance = () => {
                                     </p>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${todaySession.status === 'completed'
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                        todaySession.status === 'completed'
                                             ? 'bg-red-100 text-red-800'
                                             : 'bg-green-100 text-green-800'
-                                        }`}>
+                                    }`}>
                                         {todaySession.status === 'completed' ? 'Completed' : 'Active'}
-                                    </span>
+                                        </span>
                                 </div>
                             </div>
 
@@ -368,7 +368,7 @@ const MarkAttendance = () => {
                                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                                     <Users className="h-5 w-5 mr-2" />
                                     <span>
-                                        Present: {todaySession.students.filter(s => s.status === 'present').length} / {todaySession.students.length}
+                                        Present: {filteredStudents.filter(s => s.status === 'present').length} / {filteredStudents.length}
                                     </span>
                                 </div>
                             </div>
@@ -382,6 +382,9 @@ const MarkAttendance = () => {
                                                 Student
                                             </th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                Department
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                                 Status
                                             </th>
                                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -390,7 +393,7 @@ const MarkAttendance = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-dark-paper divide-y divide-gray-200 dark:divide-dark-border">
-                                        {todaySession.students.map((student) => (
+                                        {filteredStudents.map((student) => (
                                             <tr key={student._id}>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
@@ -405,12 +408,18 @@ const MarkAttendance = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${student.status === 'present'
+                                                    <div className="text-sm text-gray-900 dark:text-white">
+                                                        {student.student.department}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                                        student.status === 'present'
                                                             ? 'bg-green-100 text-green-800'
                                                             : student.status === 'late'
                                                                 ? 'bg-yellow-100 text-yellow-800'
                                                                 : 'bg-red-100 text-red-800'
-                                                        }`}>
+                                                    }`}>
                                                         {student.status}
                                                     </span>
                                                 </td>
@@ -422,13 +431,6 @@ const MarkAttendance = () => {
                                                             className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             <CheckCircle className="h-5 w-5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => updateAttendanceStatus(todaySession._id, student.student._id, 'late')}
-                                                            disabled={todaySession.status === 'completed'}
-                                                            className="text-yellow-600 hover:text-yellow-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            <AlertCircle className="h-5 w-5" />
                                                         </button>
                                                         <button
                                                             onClick={() => updateAttendanceStatus(todaySession._id, student.student._id, 'absent')}
@@ -459,7 +461,6 @@ const MarkAttendance = () => {
                         </div>
                     </div>
                 )}
-
             </div>
         </LecturerLayout>
     );
